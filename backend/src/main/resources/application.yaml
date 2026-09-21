@@ -1,3 +1,18 @@
+knowledge:
+  path: ../knowledge
 spring:
   application:
     name: backend
+  ai:
+    model:
+      embedding: transformers
+
+    embedding:
+      transformer:
+        onnx:
+          model-uri: file:../models/multilingual-e5-small/model.onnx
+
+        tokenizer:
+          uri: file:../models/multilingual-e5-small/tokenizer.json
+          options:
+            padding: true
