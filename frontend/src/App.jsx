@@ -1,121 +1,205 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import html2pdf from 'html2pdf.js'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [contexto, setContexto] = useState('')
+  const [parametros, setParametros] = useState('')
+  const [jtbd, setJtbd] = useState(null)
+  const [canvas, setCanvas] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState(null)
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleGenerate = async () => {
+    setIsLoading(true)
+    setErrorMsg(null)
+    setJtbd(null)
+    setCanvas(null)
+    
+    try {
+      const response = await fetch('http://localhost:8080/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: contexto, parameters: parametros }),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Servidor ocupado o caído.')
+      }
+      
+      const data = await response.json()
+      
+      if (!data.jtbd_analysis || !data.business_model_canvas) {
+          throw new Error('Formato inválido.')
+      }
+
+      setJtbd(data.jtbd_analysis)
+      setCanvas(data.business_model_canvas)
+    } catch (error) {
+      console.error(error)
+      setErrorMsg("Error al generar. Los servidores podrían estar saturados. Intenta de nuevo.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDownloadPDF = () => {
+    setIsExporting(true)
+    const element = document.getElementById('reporte-bmc')
+    
+    const opt = {
+      margin:       0.5,
+      filename:     'Business_Model_Canvas.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, backgroundColor: '#0f172a' },
+      jsPDF:        { unit: 'in', format: 'a3', orientation: 'landscape' }
+    }
+    
+    html2pdf().set(opt).from(element).save().then(() => {
+      setIsExporting(false)
+    })
+  }
+
+  const renderList = (items) => {
+    if (!items || items.length === 0) return <li>No hay datos</li>
+    return items.map((item, i) => <li key={i}>{item}</li>)
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
+    <div className="app-layout">
+      {/* PANEL IZQUIERDO */}
+      <div className="panel-formulario">
+        <h2>Generador BMC AI</h2>
+        
+        <label>Contexto (Idea o Problema):</label>
+        <textarea 
+          rows="5" 
+          value={contexto} 
+          onChange={(e) => setContexto(e.target.value)} 
+          placeholder="Ej: App para conectar estudiantes que necesitan tutorías para parciales de la UCB..."
+        />
+
+        <label>Parámetros Adicionales:</label>
+        <textarea 
+          rows="3" 
+          value={parametros} 
+          onChange={(e) => setParametros(e.target.value)} 
+          placeholder="Ej: Presupuesto limitado, uso de códigos QR..."
+        />
+
+        <button onClick={handleGenerate} disabled={isLoading || !contexto}>
+          {isLoading ? 'Generando...' : 'Generar Canvas'}
         </button>
-      </section>
 
-      <div className="ticks"></div>
+        {/* Botón de Exportación */}
+        {canvas && (
+          <button 
+            onClick={handleDownloadPDF} 
+            disabled={isExporting}
+            style={{
+              background: isExporting ? '#475569' : '#10b981', 
+              marginTop: '15px'
+            }}
+          >
+            {isExporting ? '⏳ Procesando PDF...' : '⬇️ Descargar PDF'}
+          </button>
+        )}
+      </div>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {/* PANEL DERECHO */}
+      <div className="panel-resultados">
+        
+        {errorMsg && (
+          <div className="error-banner">
+            <strong>⚠️ Atención:</strong> {errorMsg}
+          </div>
+        )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        {!jtbd && !isLoading && !errorMsg && (
+          <div className="estado-vacio">
+            <p>Ingresa un contexto y presiona "Generar Canvas" para comenzar.</p>
+          </div>
+        )}
+        
+        {/* SKELETON LOADING */}
+        {isLoading && (
+          <div className="skeleton-container">
+            <h3 className="skeleton-title skeleton-anim"></h3>
+            <div className="skeleton-jtbd skeleton-anim"></div>
+            <h3 className="skeleton-title skeleton-anim" style={{marginTop: '30px'}}></h3>
+            <div className="canvas-grid">
+              <div className="bloque alianzas skeleton-anim"></div>
+              <div className="bloque actividades skeleton-anim"></div>
+              <div className="bloque recursos skeleton-anim"></div>
+              <div className="bloque propuesta skeleton-anim"></div>
+              <div className="bloque relaciones skeleton-anim"></div>
+              <div className="bloque canales skeleton-anim"></div>
+              <div className="bloque segmentos skeleton-anim"></div>
+              <div className="bloque costos skeleton-anim"></div>
+              <div className="bloque ingresos skeleton-anim"></div>
+            </div>
+          </div>
+        )}
+        
+        {/* RESULTADOS REALES */}
+        {jtbd && canvas && !isLoading && (
+          <div id="reporte-bmc" className="resultados-contenedor">
+            <div className="jtbd-section">
+              <h3>Análisis Jobs To Be Done</h3>
+              <ul>
+                <li><strong>Job Principal:</strong> {jtbd.job_principal}</li>
+                <li><strong>Job Funcional:</strong> {jtbd.job_funcional}</li>
+                <li><strong>Job Social:</strong> {jtbd.job_social}</li>
+                <li><strong>Job Emocional:</strong> {jtbd.job_emocional}</li>
+              </ul>
+            </div>
+
+            <h3>Business Model Canvas</h3>
+            <div className="canvas-grid-scroll">
+              <div className="canvas-grid">
+                <div className="bloque alianzas">
+                  <h4>Alianzas Clave</h4>
+                  <ul>{renderList(canvas.alianzas_clave)}</ul>
+                </div>
+                <div className="bloque actividades">
+                  <h4>Actividades Clave</h4>
+                  <ul>{renderList(canvas.actividades_clave)}</ul>
+                </div>
+                <div className="bloque recursos">
+                  <h4>Recursos Clave</h4>
+                  <ul>{renderList(canvas.recursos_clave)}</ul>
+                </div>
+                <div className="bloque propuesta">
+                  <h4>Propuesta de Valor</h4>
+                  <ul>{renderList(canvas.propuesta_valor)}</ul>
+                </div>
+                <div className="bloque relaciones">
+                  <h4>Relación con Clientes</h4>
+                  <ul>{renderList(canvas.relacion_clientes)}</ul>
+                </div>
+                <div className="bloque canales">
+                  <h4>Canales</h4>
+                  <ul>{renderList(canvas.canales)}</ul>
+                </div>
+                <div className="bloque segmentos">
+                  <h4>Segmentos de Clientes</h4>
+                  <ul>{renderList(canvas.segmentos_clientes)}</ul>
+                </div>
+                <div className="bloque costos">
+                  <h4>Estructura de Costos</h4>
+                  <ul>{renderList(canvas.estructura_costos)}</ul>
+                </div>
+                <div className="bloque ingresos">
+                  <h4>Fuentes de Ingresos</h4>
+                  <ul>{renderList(canvas.fuentes_ingresos)}</ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

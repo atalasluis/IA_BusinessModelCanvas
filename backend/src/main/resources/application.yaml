@@ -1,21 +1,25 @@
 knowledge:
   path: ../knowledge
+
 spring:
   application:
     name: backend
+
   ai:
     model:
       embedding: transformers
-
     embedding:
       transformer:
         onnx:
           model-uri: file:../models/multilingual-e5-small/model.onnx
-
         tokenizer:
           uri: file:../models/multilingual-e5-small/tokenizer.json
           options:
             padding: true
+
+gemini:
+  api-key: ${GEMINI_API_KEY}
+  url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
 embedding:
   index:
     path: ../models/embeddings.json
