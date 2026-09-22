@@ -20,3 +20,11 @@ spring:
 gemini:
   api-key: ${GEMINI_API_KEY}
   url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+embedding:
+  index:
+    path: ../models/embeddings.json
+rag:
+  search:
+    top-k: 5
+    min-similarity: 0.90
+    context-score-window: 0.05

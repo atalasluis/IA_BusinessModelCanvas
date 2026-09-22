@@ -22,11 +22,10 @@ public class VectorStoreService {
     private final Path indexPath;
 
     public VectorStoreService(
-            ObjectMapper objectMapper,
             @Value("${embedding.index.path:../models/embeddings.json}")
             String indexPath
     ) {
-        this.objectMapper = objectMapper;
+        this.objectMapper = new ObjectMapper();
 
         this.indexPath = Path.of(indexPath)
                 .toAbsolutePath()

@@ -5,6 +5,7 @@ import com.bmcai.backend.knowledge.model.KnowledgeChunk;
 import com.bmcai.backend.knowledge.model.KnowledgeDocument;
 import com.bmcai.backend.knowledge.service.KnowledgeService;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,25 +40,63 @@ public class KnowledgeEmbeddingIndexService {
 
         for (KnowledgeDocument document : documents) {
 
-            List<KnowledgeChunk> chunks =
-                    knowledgeService.chunkDocument(
-                            document.getPath()
-                    );
+                List<KnowledgeChunk> chunks =
+                        knowledgeService.chunkDocument(
+                                document.getPath()
+                        );
 
-            List<ChunkEmbedding> embeddings =
-                    embeddingChunkService.createEmbeddings(
-                            chunks
-                    );
+                List<ChunkEmbedding> embeddings =
+                        embeddingChunkService.createEmbeddings(
+                                chunks
+                        );
 
-            vectorStoreService.addAll(embeddings);
+                vectorStoreService.addAll(embeddings);
 
-            totalChunks += embeddings.size();
+                totalChunks += embeddings.size();
         }
+
+        vectorStoreService.save();
 
         return totalChunks;
     }
 
     public int getIndexedChunks() {
         return vectorStoreService.size();
+    }
+
+    public boolean loadIndex() {
+        return vectorStoreService.load();
+    }
+
+    public boolean indexExists() {
+        return vectorStoreService.exists();
+    }
+
+    public String getIndexPath() {
+        return vectorStoreService.getIndexPath();
+    }
+
+    @PostConstruct
+    public void initialize() {
+
+        if (vectorStoreService.exists()) {
+
+            boolean loaded =
+                    vectorStoreService.load();
+
+            if (loaded) {
+                System.out.println(
+                        "Índice vectorial cargado: "
+                        + vectorStoreService.size()
+                        + " chunks"
+                );
+            }
+
+        } else {
+
+            System.out.println(
+                    "No existe un índice vectorial."
+            );
+        }
     }
 }

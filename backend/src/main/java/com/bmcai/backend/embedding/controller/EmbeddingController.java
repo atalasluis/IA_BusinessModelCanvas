@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.bmcai.backend.embedding.service.KnowledgeEmbeddingIndexService;
 import com.bmcai.backend.embedding.service.SemanticSearchService;
+import com.bmcai.backend.embedding.model.SearchResult;
 
 import java.util.List;
 import java.util.Map;
@@ -130,6 +131,44 @@ public class EmbeddingController {
                 "indexedChunks",
                 knowledgeEmbeddingIndexService
                         .getIndexedChunks()
+        );
+    }
+
+    @GetMapping("/index/file")
+    public Map<String, Object> indexFile() {
+
+        return Map.of(
+                "exists",
+                knowledgeEmbeddingIndexService.indexExists(),
+                "path",
+                knowledgeEmbeddingIndexService.getIndexPath()
+        );
+    }
+
+    @GetMapping("/index/load")
+    public Map<String, Object> loadIndex() {
+
+        boolean loaded =
+                knowledgeEmbeddingIndexService.loadIndex();
+
+        return Map.of(
+                "status", loaded ? "ok" : "not_found",
+                "loaded", loaded,
+                "indexedChunks",
+                knowledgeEmbeddingIndexService
+                        .getIndexedChunks()
+        );
+    }
+
+    @GetMapping("/search")
+    public List<SearchResult> search(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "5") int topK
+    ) {
+
+        return semanticSearchService.search(
+                query,
+                topK
         );
     }
 }
