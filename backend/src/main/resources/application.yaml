@@ -16,3 +16,11 @@ spring:
           uri: file:../models/multilingual-e5-small/tokenizer.json
           options:
             padding: true
+embedding:
+  index:
+    path: ../models/embeddings.json
+rag:
+  search:
+    top-k: 5
+    min-similarity: 0.90
+    context-score-window: 0.05
