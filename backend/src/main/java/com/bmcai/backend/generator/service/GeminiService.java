@@ -29,14 +29,45 @@ public class GeminiService {
     }
 
     public GenerateResponse callGemini(GenerateRequest request) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        // ====================================================================
+        // PASO 1: Consultar el endpoint RAG de tu compañero
+        // ====================================================================
+        String ragUrl = "http://localhost:8080/api/bmc/context";
+        
+        // Armamos el body exacto que espera su controlador
+        String ragRequestBody = objectMapper.writeValueAsString(Map.of(
+            "context", request.context(),
+            "parameters", request.parameters()
+        ));
+
+        HttpRequest ragHttpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(ragUrl))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(ragRequestBody))
+                .build();
+
+        // Hacemos la llamada interna al puerto 8080
+        HttpResponse<String> ragResponse = client.send(ragHttpRequest, HttpResponse.BodyHandlers.ofString());
+        
+        if (ragResponse.statusCode() != 200) {
+            throw new RuntimeException("El servicio RAG falló. Revisa los logs del compañero: " + ragResponse.body());
+        }
+
+        // Extraemos el "prompt" gigante que contiene la teoría de los PDFs
+        JsonNode ragNode = objectMapper.readTree(ragResponse.body());
+        String promptEnriquecido = ragNode.path("prompt").asText();
+
+
+        // ====================================================================
+        // PASO 2: Enviar el prompt enriquecido a Gemini con JSON Schema
+        // ====================================================================
         String systemInstruction = """
             Eres un estratega de negocios experto. Analiza ideas con 'Jobs To Be Done' y estructurar un Business Model Canvas.
-            Aplica conceptos de Seth Godin (diferenciación, tribus), Michael Porter (ventaja competitiva) y Philip Kotler (Marketing 7.0).
+            Utiliza estrictamente la información proporcionada en el CONOCIMIENTO RECUPERADO para fundamentar tu respuesta.
             """;
 
-        String userPrompt = "Contexto: " + request.context() + "\nParámetros: " + request.parameters();
-
-        // 1. Definimos el JSON Schema estricto del que Gemini NO puede escapar
         String schemaJson = """
         {
           "type": "OBJECT",
@@ -77,26 +108,24 @@ public class GeminiService {
 
         JsonNode schemaNode = objectMapper.readTree(schemaJson);
 
-        // 2. Inyectamos el Schema en la configuración de generación
-        Map<String, Object> requestBody = Map.of(
+        Map<String, Object> geminiRequestBody = Map.of(
             "systemInstruction", Map.of("parts", Map.of("text", systemInstruction)),
-            "contents", Map.of("parts", Map.of("text", userPrompt)),
+            "contents", Map.of("parts", Map.of("text", promptEnriquecido)), // Inyectamos el resultado del RAG aquí
             "generationConfig", Map.of(
                 "responseMimeType", "application/json",
                 "responseSchema", schemaNode
             )
         );
 
-        String jsonBody = objectMapper.writeValueAsString(requestBody);
+        String jsonBody = objectMapper.writeValueAsString(geminiRequestBody);
 
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest httpRequest = HttpRequest.newBuilder()
+        HttpRequest geminiHttpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(geminiUrl + "?key=" + apiKey))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = client.send(geminiHttpRequest, HttpResponse.BodyHandlers.ofString());
         JsonNode rootNode = objectMapper.readTree(response.body());
 
         if (rootNode.has("error")) {
@@ -111,5 +140,4 @@ public class GeminiService {
         String geminiJsonOutput = candidates.get(0).path("content").path("parts").get(0).path("text").asText();
         return objectMapper.readValue(geminiJsonOutput, GenerateResponse.class);
     }
-
 }
