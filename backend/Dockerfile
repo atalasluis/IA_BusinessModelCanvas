@@ -1,3 +1,4 @@
+# Etapa 1: compilación
 FROM eclipse-temurin:21-jdk AS build
 
 WORKDIR /app
@@ -14,19 +15,17 @@ COPY src src
 COPY knowledge knowledge
 COPY models models
 
-# COMPROBACIÓN TEMPORAL
-RUN echo "===== MODELOS COPIADOS =====" && \
-    find models -maxdepth 3 -type f -exec ls -lh {} \; && \
-    echo "===== FIN MODELOS ====="
-
 RUN ./mvnw clean package -DskipTests
 
 
+# Etapa 2: ejecución
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /app/models models
+COPY --from=build /app/knowledge knowledge
 
 ENV PORT=8080
 
