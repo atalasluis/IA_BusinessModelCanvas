@@ -28,6 +28,7 @@ COPY --from=build /app/models models
 COPY --from=build /app/knowledge knowledge
 
 ENV PORT=8080
+ENV JAVA_TOOL_OPTIONS="-Xms128m -Xmx512m"
 
 EXPOSE 8080
 
