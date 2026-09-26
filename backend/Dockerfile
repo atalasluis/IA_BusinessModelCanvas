@@ -19,6 +19,9 @@ COPY src src
 COPY knowledge knowledge
 COPY models models
 
+# Verificar que los modelos llegaron al contenedor
+RUN ls -lah models/multilingual-e5-small/
+
 # Compilar la aplicación
 RUN ./mvnw clean package -DskipTests
 
