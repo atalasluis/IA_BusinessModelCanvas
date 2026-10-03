@@ -2,7 +2,7 @@ server:
   port: ${PORT:8080}
   
 knowledge:
-  path: knowledge
+  path: ../knowledge
 
 spring:
   config:
@@ -16,18 +16,22 @@ spring:
     embedding:
       transformer:
         onnx:
-          model-uri: file:models/multilingual-e5-small/model.onnx
+          # Ruta actualizada a la nueva subcarpeta
+          model-uri: file:../models/multilingual-e5-small/onnx/model.onnx
         tokenizer:
-          uri: file:models/multilingual-e5-small/tokenizer.json
+          # Ruta actualizada a la nueva subcarpeta
+          uri: file:../models/multilingual-e5-small/onnx/tokenizer.json
           options:
             padding: true
 
 gemini:
   api-key: ${GEMINI_API_KEY}
   url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+
 embedding:
   index:
-    path: models/embeddings.json
+    path: ../models/embeddings.json
+
 rag:
   search:
     top-k: 5

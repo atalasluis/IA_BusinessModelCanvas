@@ -225,3 +225,65 @@ button:disabled {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* --- TABS --- */
+.tabs-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.tab-button {
+  flex: 1;
+  background: #334155;
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 0;
+  font-size: 0.85rem;
+  box-shadow: none;
+}
+
+.tab-button.active {
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  color: white;
+  font-weight: 700;
+}
+
+/* --- LEAN CANVAS GRID --- */
+.lean-canvas-top {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 15px;
+  min-width: 1050px; /* Evita que se aplaste */
+  margin-bottom: 15px;
+}
+
+.lean-canvas-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  min-width: 1050px;
+}
+
+.lean-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.lean-sub-block {
+  flex: 1; /* Hace que los bloques internos se estiren uniformemente */
+}
+
+.mt-15 {
+  margin-top: 15px;
+}
+
+/* Colores de acento para el Lean Canvas */
+.border-red { border-top: 4px solid #ef4444; }
+.border-orange { border-top: 4px solid #f97316; }
+.border-indigo { border-top: 4px solid #6366f1; background: rgba(99, 102, 241, 0.05); }
+.border-green { border-top: 4px solid #10b981; }
+.border-cyan { border-top: 4px solid #06b6d4; }
+.border-slate { border-top: 4px solid #64748b; }
+.border-teal { border-top: 4px solid #14b8a6; }
