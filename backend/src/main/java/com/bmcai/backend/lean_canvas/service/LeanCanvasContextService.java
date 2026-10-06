@@ -8,69 +8,14 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Service
 public class LeanCanvasContextService {
 
     private static final int SEARCH_TOP_K = 8;
-
     private static final int GENERAL_SEARCH_TOP_K = 15;
-
     private static final int MAX_GENERAL_SOURCES = 3;
-
-    private static final Map<String, String> LEAN_CANVAS_BLOCK_QUERIES =
-            Map.ofEntries(
-
-                    Map.entry(
-                            "problema.md",
-                            "problemas principales necesidades dolores dificultades situaciones problemáticas alternativas actuales y necesidades del cliente"
-                    ),
-
-                    Map.entry(
-                            "segmentos-clientes.md",
-                            "segmentos de clientes usuarios compradores early adopters características necesidades comportamiento contexto y perfiles de clientes"
-                    ),
-
-                    Map.entry(
-                            "propuesta-valor.md",
-                            "propuesta de valor única beneficios diferenciación problema principal resultado deseado valor para el cliente y diferencia frente a alternativas"
-                    ),
-
-                    Map.entry(
-                            "solucion.md",
-                            "solución propuesta características producto servicio funcionalidades solución mínima producto mínimo viable y forma de resolver los problemas"
-                    ),
-
-                    Map.entry(
-                            "canales.md",
-                            "canales de comunicación distribución adquisición marketing ventas alcance medios para llegar a clientes y estrategias de contacto"
-                    ),
-
-                    Map.entry(
-                            "flujos-ingresos.md",
-                            "flujos de ingresos modelo de monetización precios pagos suscripción compra única pago por uso servicios freemium y disposición a pagar"
-                    ),
-
-                    Map.entry(
-                            "estructura-costes.md",
-                            "estructura de costes costos principales gastos costes fijos variables recursos necesarios adquisición operación desarrollo y validación"
-                    ),
-
-                    Map.entry(
-                            "metricas-clave.md",
-                            "métricas clave indicadores KPI adquisición activación retención ingresos recomendación conversión crecimiento y medición del modelo"
-                    ),
-
-                    Map.entry(
-                            "ventaja-injusta.md",
-                            "ventaja injusta diferenciación sostenible barreras competitivas elementos difíciles de copiar comunidad efectos de red información exclusiva posicionamiento y activos estratégicos"
-                    )
-            );
-
-    private static final String INTRODUCTION_DOCUMENT =
-            "introduccion.md";
 
     private final LeanCanvasSemanticSearchService searchService;
 
@@ -85,73 +30,135 @@ public class LeanCanvasContextService {
             String parameters
     ) {
 
-        validate(context, parameters);
-
-        List<SearchResult> selectedResults =
-                new ArrayList<>();
-
-        Set<String> usedContent =
-                new LinkedHashSet<>();
-
-        /*
-         * Recuperación específica de cada bloque.
-         *
-         * La consulta combina:
-         *
-         * 1. El objetivo del bloque.
-         * 2. El contexto concreto del proyecto.
-         * 3. Los parámetros proporcionados por el usuario.
-         *
-         * De esta forma la búsqueda semántica no recupera
-         * solamente información genérica sobre Lean Canvas,
-         * sino información metodológica relevante para el
-         * proyecto concreto.
-         */
-        for (Map.Entry<String, String> entry :
-                LEAN_CANVAS_BLOCK_QUERIES.entrySet()) {
-
-            String blockQuery =
-                    buildBlockQuery(
-                            entry.getValue(),
-                            context,
-                            parameters
-                    );
-
-            List<SearchResult> results =
-                    searchService.search(
-                            blockQuery,
-                            SEARCH_TOP_K
-                    );
-
-            addBestResultForDocument(
-                    selectedResults,
-                    usedContent,
-                    results,
-                    entry.getKey()
+        if (context == null || context.isBlank()) {
+            throw new IllegalArgumentException(
+                    "El contexto del proyecto no puede estar vacío"
             );
         }
 
+        if (parameters == null) {
+            parameters = "";
+        }
+
+        String normalizedParameters = parameters.trim();
+
+        List<SearchResult> selectedResults = new ArrayList<>();
+
         /*
-         * Recuperación de la metodología general.
-         *
-         * Se mantiene separada de los nueve bloques para que
-         * introduccion.md no domine el contexto específico.
+         * Consultas específicas para cada bloque del Lean Canvas.
          */
-        String introductionQuery = """
-                Lean Canvas metodología general propósito estructura
-                nueve bloques hipótesis problema segmento cliente
-                propuesta solución canales ingresos costes métricas
-                ventaja injusta y validación.
+        List<BlockQuery> blockQueries = List.of(
 
-                Proyecto:
-                %s
+                new BlockQuery(
+                        "problema.md",
+                        "Problemas principales que enfrenta el segmento de clientes, "
+                                + "necesidades, frustraciones, dificultades, resultados no deseados "
+                                + "y alternativas actuales para resolver esos problemas."
+                ),
 
-                Parámetros:
-                %s
-                """.formatted(
-                context,
-                parameters
+                new BlockQuery(
+                        "segmentos-clientes.md",
+                        "Segmentos de clientes, usuarios, compradores, early adopters, "
+                                + "características del cliente objetivo y segmentación específica."
+                ),
+
+                new BlockQuery(
+                        "propuesta-valor.md",
+                        "Propuesta única de valor, beneficio principal para el cliente, "
+                                + "diferenciación, problema que resuelve y valor frente a alternativas."
+                ),
+
+                new BlockQuery(
+                        "solucion.md",
+                        "Solución mínima para resolver los problemas principales, "
+                                + "producto mínimo viable, funcionalidades esenciales y relación "
+                                + "entre problema y solución."
+                ),
+
+                new BlockQuery(
+                        "canales.md",
+                        "Canales para llegar a los segmentos de clientes, adquisición, "
+                                + "comunicación, distribución, canales digitales, directos, "
+                                + "inbound y outbound."
+                ),
+
+                new BlockQuery(
+                        "flujos-ingresos.md",
+                        "Modelo de ingresos, precios, disposición a pagar, formas de monetización, "
+                                + "cobros y relación entre ingresos, clientes y propuesta de valor."
+                ),
+
+                new BlockQuery(
+                        "estructura-costes.md",
+                        "Estructura de costes, costes iniciales, costes fijos, costes variables, "
+                                + "operación, desarrollo, adquisición de clientes y mantenimiento."
+                ),
+
+                new BlockQuery(
+                        "metricas-clave.md",
+                        "Métricas clave accionables, adquisición, activación, retención, ingresos, "
+                                + "uso, conversión, crecimiento y validación del modelo."
+                ),
+
+                new BlockQuery(
+                        "ventaja-injusta.md",
+                        "Ventaja injusta, activos difíciles de copiar o comprar, barreras "
+                                + "competitivas, efecto de red, reputación y ventajas sostenibles."
+                )
         );
+
+        /*
+         * Recuperación específica por bloque.
+         * Solo se conserva el mejor fragmento correspondiente
+         * al documento objetivo.
+         */
+        for (BlockQuery block : blockQueries) {
+
+            String query =
+                    block.description()
+                            + "\n\nContexto del proyecto:\n"
+                            + context
+                            + "\n\nParámetros del proyecto:\n"
+                            + normalizedParameters;
+
+            List<SearchResult> results =
+                    searchService.search(
+                            query,
+                            SEARCH_TOP_K
+                    );
+
+            SearchResult bestResult =
+                    results.stream()
+                            .filter(result ->
+                                    result.getChunk()
+                                            .getDocumentName()
+                                            .equalsIgnoreCase(
+                                                    block.documentName()
+                                            )
+                            )
+                            .max(
+                                    Comparator.comparingDouble(
+                                            SearchResult::getSimilarity
+                                    )
+                            )
+                            .orElse(null);
+
+            if (bestResult != null) {
+                selectedResults.add(bestResult);
+            }
+        }
+
+        /*
+         * Recuperación de la introducción metodológica.
+         */
+        String introductionQuery =
+                "Principios generales de Lean Canvas, Running Lean, "
+                        + "documentar el plan, identificar riesgos, formular hipótesis, "
+                        + "validar el modelo de negocio y construir un Lean Canvas.\n\n"
+                        + "Contexto del proyecto:\n"
+                        + context
+                        + "\n\nParámetros del proyecto:\n"
+                        + normalizedParameters;
 
         List<SearchResult> introductionResults =
                 searchService.search(
@@ -159,25 +166,35 @@ public class LeanCanvasContextService {
                         SEARCH_TOP_K
                 );
 
-        addBestResultForDocument(
-                selectedResults,
-                usedContent,
-                introductionResults,
-                INTRODUCTION_DOCUMENT
-        );
+        SearchResult bestIntroduction =
+                introductionResults.stream()
+                        .filter(result ->
+                                result.getChunk()
+                                        .getDocumentName()
+                                        .equalsIgnoreCase(
+                                                "introduccion.md"
+                                        )
+                        )
+                        .max(
+                                Comparator.comparingDouble(
+                                        SearchResult::getSimilarity
+                                )
+                        )
+                        .orElse(null);
+
+        if (bestIntroduction != null) {
+            selectedResults.add(bestIntroduction);
+        }
 
         /*
-         * Búsqueda general relacionada directamente con el proyecto.
-         *
-         * Esta búsqueda solamente agrega documentos que todavía
-         * no hayan sido recuperados mediante las búsquedas
-         * específicas.
+         * Búsqueda general para recuperar información adicional
+         * relevante que no haya sido encontrada por los bloques.
          */
         String generalQuery =
-                buildGeneralQuery(
-                        context,
-                        parameters
-                );
+                context
+                        + "\n"
+                        + normalizedParameters
+                        + "\nLean Canvas modelo de negocio";
 
         List<SearchResult> generalResults =
                 searchService.search(
@@ -185,316 +202,99 @@ public class LeanCanvasContextService {
                         GENERAL_SEARCH_TOP_K
                 );
 
-        addGeneralKnowledge(
-                selectedResults,
-                usedContent,
-                generalResults
-        );
+        Set<String> existingSources = new LinkedHashSet<>();
 
-        /*
-         * Mantener un orden estable de los bloques.
-         */
-        selectedResults.sort(
-                Comparator
-                        .comparingInt(
-                                (SearchResult result) ->
-                                        blockPriority(
-                                                result.getChunk()
-                                                        .getDocumentName()
-                                        )
-                        )
-                        .thenComparing(
-                                SearchResult::getSimilarity,
-                                Comparator.reverseOrder()
-                        )
-        );
+        for (SearchResult result : selectedResults) {
+            existingSources.add(
+                    result.getChunk()
+                            .getDocumentName()
+            );
+        }
 
-        String knowledge =
-                buildKnowledge(selectedResults);
+        int additionalSources = 0;
 
-        return buildFinalPrompt(
-                context,
-                parameters,
-                knowledge
-        );
-    }
-
-    /**
-     * Construye una consulta específica para un bloque.
-     */
-    private String buildBlockQuery(
-            String blockDescription,
-            String context,
-            String parameters
-    ) {
-
-        return """
-                Lean Canvas.
-
-                Bloque que se está investigando:
-                %s
-
-                Proyecto:
-                %s
-
-                Parámetros:
-                %s
-
-                Recuperar conocimiento metodológico y conceptual
-                relevante para construir este bloque del Lean Canvas
-                aplicado específicamente al proyecto.
-                """.formatted(
-                blockDescription,
-                context,
-                parameters
-        );
-    }
-
-    /**
-     * Agrega solamente el mejor resultado del documento
-     * solicitado.
-     */
-    private void addBestResultForDocument(
-            List<SearchResult> selectedResults,
-            Set<String> usedContent,
-            List<SearchResult> results,
-            String targetDocument
-    ) {
-
-        SearchResult bestResult = null;
-
-        for (SearchResult result : results) {
-
-            if (result == null ||
-                    result.getChunk() == null) {
-                continue;
-            }
+        for (SearchResult result : generalResults) {
 
             String documentName =
-                    normalizeSource(
-                            result.getChunk()
-                                    .getDocumentName()
-                    );
+                    result.getChunk()
+                            .getDocumentName();
 
-            if (!documentName.equalsIgnoreCase(
-                    normalizeSource(targetDocument)
-            )) {
-                continue;
-            }
-
-            String content =
-                    normalizeContent(
-                            result.getChunk()
-                                    .getContent()
-                    );
-
-            if (content.isBlank()) {
-                continue;
-            }
-
-            if (usedContent.contains(content)) {
-                continue;
-            }
-
-            if (bestResult == null ||
-                    result.getSimilarity() >
-                            bestResult.getSimilarity()) {
-
-                bestResult = result;
-            }
-        }
-
-        if (bestResult != null) {
-
-            String content =
-                    normalizeContent(
-                            bestResult.getChunk()
-                                    .getContent()
-                    );
-
-            if (usedContent.add(content)) {
-                selectedResults.add(bestResult);
-            }
-        }
-    }
-
-    /**
-     * Agrega resultados generales solamente cuando pertenecen
-     * a documentos que todavía no están presentes.
-     */
-    private void addGeneralKnowledge(
-            List<SearchResult> selectedResults,
-            Set<String> usedContent,
-            List<SearchResult> results
-    ) {
-
-        Set<String> usedDocuments =
-                new LinkedHashSet<>();
-
-        for (SearchResult result : results) {
-
-            if (result == null ||
-                    result.getChunk() == null) {
-                continue;
-            }
-
-            String document =
-                    normalizeSource(
-                            result.getChunk()
-                                    .getDocumentName()
-                    );
-
-            String content =
-                    normalizeContent(
-                            result.getChunk()
-                                    .getContent()
-                    );
-
-            if (document.isBlank() ||
-                    content.isBlank()) {
-                continue;
-            }
-
-            if (usedContent.contains(content)) {
-                continue;
-            }
-
-            if (containsDocument(
-                    selectedResults,
-                    document
-            )) {
-                continue;
-            }
-
-            if (usedDocuments.contains(document)) {
+            if (existingSources.contains(documentName)) {
                 continue;
             }
 
             selectedResults.add(result);
+            existingSources.add(documentName);
 
-            usedContent.add(content);
-            usedDocuments.add(document);
+            additionalSources++;
 
-            if (usedDocuments.size() >=
-                    MAX_GENERAL_SOURCES) {
+            if (additionalSources >= MAX_GENERAL_SOURCES) {
                 break;
             }
         }
-    }
 
-    private boolean containsDocument(
-            List<SearchResult> results,
-            String document
-    ) {
-
-        for (SearchResult result : results) {
-
-            if (result == null ||
-                    result.getChunk() == null) {
-                continue;
-            }
-
-            String existingDocument =
-                    normalizeSource(
-                            result.getChunk()
-                                    .getDocumentName()
-                    );
-
-            if (existingDocument.equalsIgnoreCase(
-                    document
-            )) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private String buildGeneralQuery(
-            String context,
-            String parameters
-    ) {
-
-        return """
-                Lean Canvas para el siguiente proyecto.
-
-                Contexto del proyecto:
-                %s
-
-                Parámetros:
-                %s
-
-                Buscar conocimiento relevante para construir
-                un Lean Canvas completo considerando problema,
-                segmentos de clientes, propuesta de valor,
-                solución, canales, flujos de ingresos,
-                estructura de costes, métricas clave y
-                ventaja injusta.
-                """.formatted(
-                context,
-                parameters
+        /*
+         * Orden de las fuentes:
+         * 1. Los 9 bloques.
+         * 2. Introducción.
+         * 3. Fuentes adicionales.
+         */
+        selectedResults.sort(
+                Comparator.comparingInt(
+                        (SearchResult result) ->
+                                blockPriority(
+                                        result.getChunk()
+                                                .getDocumentName()
+                                )
+                ).thenComparing(
+                        Comparator.comparingDouble(
+                                SearchResult::getSimilarity
+                        ).reversed()
+                )
         );
-    }
 
-    private String buildKnowledge(
-            List<SearchResult> results
-    ) {
-
-        if (results.isEmpty()) {
-            return "No se encontró conocimiento relevante.";
-        }
-
-        StringBuilder knowledge =
+        StringBuilder knowledgeContext =
                 new StringBuilder();
 
-        for (SearchResult result : results) {
+        for (SearchResult result : selectedResults) {
 
-            if (result == null ||
-                    result.getChunk() == null) {
-                continue;
-            }
-
-            String source =
-                    normalizeSource(
+            knowledgeContext
+                    .append("[Fuente: ")
+                    .append(
                             result.getChunk()
                                     .getDocumentName()
-                    );
-
-            String content =
-                    normalizeContent(
-                            result.getChunk()
-                                    .getContent()
-                    );
-
-            if (content.isBlank()) {
-                continue;
-            }
-
-            knowledge.append(
-                    "[Fuente: "
-            ).append(source)
+                    )
                     .append("]\n");
 
-            knowledge.append(
-                    "[Similitud: "
-            ).append(
-                    String.format(
-                            "%.4f",
-                            result.getSimilarity()
+            knowledgeContext
+                    .append("[Similitud: ")
+                    .append(
+                            String.format(
+                                    "%.4f",
+                                    result.getSimilarity()
+                            )
                     )
-            ).append("]\n");
+                    .append("]\n");
 
-            knowledge.append(content)
+            knowledgeContext
+                    .append(
+                            result.getChunk()
+                                    .getContent()
+                    )
                     .append("\n\n");
         }
 
-        return knowledge.toString().trim();
+        return buildPrompt(
+                context,
+                normalizedParameters,
+                knowledgeContext.toString()
+        );
     }
 
-    private String buildFinalPrompt(
+    private String buildPrompt(
             String context,
             String parameters,
-            String knowledge
+            String knowledgeContext
     ) {
 
         return """
@@ -516,9 +316,9 @@ public class LeanCanvasContextService {
 
                 INSTRUCCIONES:
 
-                1. Genera los 9 bloques del Lean Canvas.
+                1. Genera un Lean Canvas completo utilizando
+                   exactamente estos 9 bloques:
 
-                2. Los bloques son:
                    - Problema
                    - Segmentos de clientes
                    - Propuesta de valor única
@@ -529,44 +329,187 @@ public class LeanCanvasContextService {
                    - Métricas clave
                    - Ventaja injusta
 
-                3. Utiliza el conocimiento de referencia como
+                2. Utiliza el conocimiento de referencia como
                    orientación metodológica.
 
-                4. Adapta el contenido al contexto y parámetros
-                   proporcionados por el usuario.
+                3. Adapta todo el contenido al contexto y
+                   parámetros proporcionados por el usuario.
 
-                5. No copies literalmente el contenido de los
-                   documentos de conocimiento.
+                4. No copies literalmente los documentos de
+                   conocimiento. Utiliza sus conceptos para
+                   generar contenido específico para el proyecto.
 
-                6. Evita repetir la misma información entre bloques.
+                5. Evita repetir información entre bloques.
 
-                7. La propuesta de valor debe diferenciarse de
-                   la solución.
+                6. El bloque Problema debe identificar problemas
+                   concretos del segmento objetivo y no describir
+                   soluciones o funcionalidades.
 
-                8. Los segmentos de clientes deben ser específicos
-                   para el proyecto.
+                7. Los Segmentos de clientes deben ser específicos.
+                   Cuando sea posible, diferencia entre:
 
-                9. Los canales deben ser coherentes con los
-                   segmentos de clientes.
+                   - usuario;
+                   - cliente;
+                   - comprador;
+                   - early adopter;
+                   - segmento secundario.
 
-                10. Los flujos de ingresos deben ser compatibles
-                    con la propuesta y el mercado.
+                8. La Propuesta de valor única debe explicar:
 
-                11. Las métricas deben permitir evaluar el
-                    funcionamiento y crecimiento del proyecto.
+                   - para quién es;
+                   - qué problema resuelve;
+                   - qué beneficio ofrece;
+                   - por qué es relevante frente a alternativas.
 
-                12. La ventaja injusta debe representar un elemento
-                    difícil de copiar por los competidores. Si no
-                    existe información suficiente, indícalo en lugar
-                    de inventar una ventaja.
+                9. Diferencia claramente la Propuesta de valor
+                   de la Solución.
 
-                13. No inventes datos concretos que no estén
-                    respaldados por el contexto o los parámetros.
+                10. La Solución debe estar relacionada directamente
+                    con los problemas identificados y representar
+                    una solución mínima y realista.
 
-                14. Responde únicamente con el Lean Canvas
-                    estructurado en sus 9 bloques.
+                11. Los Canales deben ser coherentes con los
+                    segmentos de clientes.
 
-                Formato esperado:
+                12. Los Flujos de ingresos deben ser coherentes
+                    con el producto, servicio, clientes y mercado.
+
+                13. La Estructura de costes debe identificar los
+                    principales costes necesarios para desarrollar,
+                    operar y comercializar el proyecto.
+
+                14. Las Métricas clave deben ser accionables y
+                    permitir evaluar adquisición, activación,
+                    retención, ingresos, uso o validación.
+
+                15. La Ventaja injusta debe representar un elemento
+                    difícil de copiar o comprar.
+
+                    Si todavía no existe una ventaja injusta
+                    demostrable, indícalo claramente y no inventes
+                    una.
+
+                DATOS NUMÉRICOS Y FUENTES:
+
+                16. Cuando exista información externa verificable
+                    relacionada con el proyecto, utilízala para
+                    enriquecer el Lean Canvas.
+
+                17. Da prioridad a información cuantitativa cuando
+                    sea relevante, por ejemplo:
+
+                    - tamaño del mercado;
+                    - cantidad de usuarios;
+                    - cantidad de clientes;
+                    - porcentajes;
+                    - precios;
+                    - rangos de precios;
+                    - costes;
+                    - crecimiento;
+                    - frecuencia de uso;
+                    - tasas de conversión;
+                    - estadísticas;
+                    - otros indicadores relevantes.
+
+                18. Los datos numéricos deben aparecer dentro del
+                    bloque del Lean Canvas al que correspondan.
+
+                    Ejemplos:
+
+                    - tamaño del mercado → Segmentos de clientes;
+                    - precios → Flujos de ingresos;
+                    - costes → Estructura de costes;
+                    - tasas de conversión o retención → Métricas clave;
+                    - estadísticas sobre un problema → Problema.
+
+                19. NO inventes datos numéricos.
+
+                20. No presentes estimaciones, suposiciones o
+                    aproximaciones como datos reales.
+
+                21. Cuando utilices un dato externo verificable,
+                    conserva la relación entre el dato y su fuente.
+
+                22. Para cada dato externo utilizado, proporciona
+                    en la sección Fuentes y bibliografía:
+
+                    - nombre de la fuente;
+                    - organización o autor, si está disponible;
+                    - año, si está disponible;
+                    - URL verificable.
+
+                23. No inventes URLs, nombres de fuentes, autores
+                    ni fechas.
+
+                24. Si no se dispone de información externa
+                    verificable para respaldar datos numéricos,
+                    no inventes cifras.
+
+                25. Si se encontró información externa verificable,
+                    inclúyela en el bloque correspondiente y agrega
+                    su fuente y URL en Fuentes y bibliografía.
+
+                26. Si no se encontró información externa
+                    verificable, NO escribas esa aclaración dentro
+                    de los 9 bloques.
+
+                    Indica únicamente en Fuentes y bibliografía:
+
+                    "No se encontró información externa verificable
+                    para respaldar datos numéricos adicionales."
+
+                27. La información de los documentos de conocimiento
+                    proporcionados en este contexto es orientación
+                    metodológica. No debe convertirse automáticamente
+                    en estadísticas reales del mercado.
+
+                FUENTES Y BIBLIOGRAFÍA:
+
+                28. Después de los 9 bloques agrega únicamente
+                    una sección llamada:
+
+                    FUENTES Y BIBLIOGRAFÍA
+
+                29. Incluye aquí las fuentes utilizadas para
+                    respaldar datos externos o afirmaciones
+                    verificables.
+
+                30. Cada fuente debe incluir, cuando esté disponible:
+
+                    - título o nombre;
+                    - organización o autor;
+                    - año;
+                    - URL.
+
+                31. Las URLs deben aparecer únicamente en
+                    Fuentes y bibliografía.
+
+                32. Si no se encontró información externa
+                    verificable, utiliza:
+
+                    No se encontró información externa verificable
+                    para respaldar datos numéricos adicionales.
+
+                RESTRICCIONES DE RESPUESTA:
+
+                33. La respuesta debe contener únicamente:
+
+                    1. Los 9 bloques del Lean Canvas.
+                    2. Fuentes y bibliografía.
+
+                34. NO agregues:
+
+                    - Datos y supuestos;
+                    - Prototipo;
+                    - Mockup;
+                    - explicación metodológica;
+                    - explicación del proceso;
+                    - comentarios fuera del Lean Canvas;
+                    - un décimo bloque.
+
+                35. Utiliza exactamente esta estructura:
+
+                LEAN CANVAS
 
                 Problema:
                 - ...
@@ -594,94 +537,59 @@ public class LeanCanvasContextService {
 
                 Ventaja injusta:
                 - ...
+
+                FUENTES Y BIBLIOGRAFÍA
+
+                - Fuente: ...
+                  Organización/Autor: ...
+                  Año: ...
+                  URL: ...
+
+                36. Si un dato numérico externo se utiliza dentro
+                    de un bloque, debe existir una fuente
+                    correspondiente en Fuentes y bibliografía.
+
+                37. Si no existe información suficiente para
+                    respaldar un dato numérico, no lo inventes.
+
+                38. Prioriza información específica y útil para
+                    el proyecto sobre explicaciones generales
+                    de Lean Canvas.
+
+                39. No agregues información que contradiga el
+                    contexto o los parámetros proporcionados.
+
+                40. Si existe incertidumbre sobre un dato, no lo
+                    presentes como un hecho verificable.
                 """.formatted(
                 context,
                 parameters,
-                knowledge
+                knowledgeContext
         );
     }
 
-    private int blockPriority(
-            String documentName
-    ) {
+    private int blockPriority(String documentName) {
 
-        String source =
-                normalizeSource(documentName);
-
-        return switch (source) {
+        return switch (documentName.toLowerCase()) {
 
             case "problema.md" -> 1;
-
             case "segmentos-clientes.md" -> 2;
-
             case "propuesta-valor.md" -> 3;
-
             case "solucion.md" -> 4;
-
             case "canales.md" -> 5;
-
             case "flujos-ingresos.md" -> 6;
-
             case "estructura-costes.md" -> 7;
-
             case "metricas-clave.md" -> 8;
-
             case "ventaja-injusta.md" -> 9;
-
             case "introduccion.md" -> 10;
 
-            default -> 20;
+            default -> 100;
         };
     }
 
-    private String normalizeSource(
-            String source
+    private record BlockQuery(
+            String documentName,
+            String description
     ) {
-
-        if (source == null) {
-            return "";
-        }
-
-        String normalized =
-                source.replace("\\", "/");
-
-        return normalized.substring(
-                normalized.lastIndexOf("/") + 1
-        ).trim();
     }
-
-    private String normalizeContent(
-            String content
-    ) {
-
-        if (content == null) {
-            return "";
-        }
-
-        return content
-                .replace("\r\n", "\n")
-                .replace("\r", "\n")
-                .trim();
-    }
-
-    private void validate(
-            String context,
-            String parameters
-    ) {
-
-        if (context == null ||
-                context.isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "El contexto no puede estar vacío"
-            );
-        }
-
-        if (parameters == null || 
-                parameters.isBlank()) { 
-            throw new IllegalArgumentException( 
-                "Los parámetros no pueden estar vacíos" 
-            ); 
-        } 
-    } 
 }
