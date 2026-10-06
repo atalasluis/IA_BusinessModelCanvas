@@ -1,6 +1,7 @@
 package com.bmcai.backend.lean_canvas.service;
 
 import com.bmcai.backend.embedding.model.SearchResult;
+import com.bmcai.backend.embedding.service.LeanCanvasEmbeddingIndexService;
 import com.bmcai.backend.embedding.service.LeanCanvasSemanticSearchService;
 import org.springframework.stereotype.Service;
 
@@ -18,11 +19,14 @@ public class LeanCanvasContextService {
     private static final int MAX_GENERAL_SOURCES = 3;
 
     private final LeanCanvasSemanticSearchService searchService;
+    private final LeanCanvasEmbeddingIndexService indexService;
 
     public LeanCanvasContextService(
-            LeanCanvasSemanticSearchService searchService
+            LeanCanvasSemanticSearchService searchService,
+            LeanCanvasEmbeddingIndexService indexService
     ) {
         this.searchService = searchService;
+        this.indexService = indexService;
     }
 
     public String buildPrompt(
@@ -39,6 +43,8 @@ public class LeanCanvasContextService {
         if (parameters == null) {
             parameters = "";
         }
+
+        indexService.loadIndex();
 
         String normalizedParameters = parameters.trim();
 
@@ -109,8 +115,6 @@ public class LeanCanvasContextService {
 
         /*
          * Recuperación específica por bloque.
-         * Solo se conserva el mejor fragmento correspondiente
-         * al documento objetivo.
          */
         for (BlockQuery block : blockQueries) {
 
@@ -187,8 +191,7 @@ public class LeanCanvasContextService {
         }
 
         /*
-         * Búsqueda general para recuperar información adicional
-         * relevante que no haya sido encontrada por los bloques.
+         * Búsqueda general para recuperar información adicional.
          */
         String generalQuery =
                 context
@@ -234,10 +237,7 @@ public class LeanCanvasContextService {
         }
 
         /*
-         * Orden de las fuentes:
-         * 1. Los 9 bloques.
-         * 2. Introducción.
-         * 3. Fuentes adicionales.
+         * Orden de las fuentes.
          */
         selectedResults.sort(
                 Comparator.comparingInt(
@@ -413,14 +413,6 @@ public class LeanCanvasContextService {
 
                 18. Los datos numéricos deben aparecer dentro del
                     bloque del Lean Canvas al que correspondan.
-
-                    Ejemplos:
-
-                    - tamaño del mercado → Segmentos de clientes;
-                    - precios → Flujos de ingresos;
-                    - costes → Estructura de costes;
-                    - tasas de conversión o retención → Métricas clave;
-                    - estadísticas sobre un problema → Problema.
 
                 19. NO inventes datos numéricos.
 
