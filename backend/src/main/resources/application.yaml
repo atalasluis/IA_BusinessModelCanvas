@@ -1,28 +1,29 @@
 server:
   port: ${PORT:8080}
-  
+
 knowledge:
-  path: ../knowledge
+  path: knowledge
 
 spring:
   config:
-      import: optional:file:.env[.properties]
-  application:
-    name: backend
+    import: optional:file:.env[.properties]
 
-  ai:
-    model:
-      embedding: transformers
-    embedding:
-      transformer:
-        onnx:
-          # Ruta actualizada a la nueva subcarpeta
-          model-uri: file:../models/multilingual-e5-small/onnx/model.onnx
-        tokenizer:
-          # Ruta actualizada a la nueva subcarpeta
-          uri: file:../models/multilingual-e5-small/onnx/tokenizer.json
-          options:
-            padding: true
+application:
+  name: backend
+
+ai:
+  model:
+    embedding: transformers
+  embedding:
+    transformer:
+      onnx:
+        model-uri: file:models/multilingual-e5-small/onnx/model.onnx
+
+      tokenizer:
+        uri: file:models/multilingual-e5-small/onnx/tokenizer.json
+        options:
+          padding: true
+
 
 gemini:
   api-key: ${GEMINI_API_KEY}
@@ -30,7 +31,11 @@ gemini:
 
 embedding:
   index:
-    path: ../models/embeddings.json
+    path: models/embeddings.json
+
+  lean-canvas:
+    index:
+      path: models/embeddings-lean-canvas.json
 
 rag:
   search:
