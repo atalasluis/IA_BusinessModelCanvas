@@ -243,5 +243,40 @@ public class GeminiService {
 
         String geminiJsonOutput = candidates.get(0).path("content").path("parts").get(0).path("text").asText();
         return objectMapper.readValue(geminiJsonOutput, GenerateLeanResponse.class);
-    } 
+    }
+
+
+    public String generateMockup(GenerateRequest request) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+
+        String systemInstruction = """
+            Eres un director de arte de UI/UX. Tu única tarea es leer la solución del producto y generar un prompt corto y muy visual en inglés (máximo 20 palabras) para un generador de imágenes de inteligencia artificial.
+            El prompt debe describir un mockup hiperrealista de una app móvil o página web mostrada en la pantalla de un dispositivo.
+            Ejemplo de salida: "photorealistic mockup of a modern mobile app showing a dashboard with blue buttons, clean UI, held by hands in a university campus"
+            """;
+
+        Map<String, Object> geminiRequestBody = Map.of(
+            "systemInstruction", Map.of("parts", Map.of("text", systemInstruction)),
+            "contents", Map.of("parts", Map.of("text", "Solución a visualizar: " + request.context()))
+        );
+
+        String jsonBody = objectMapper.writeValueAsString(geminiRequestBody);
+        HttpRequest geminiHttpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(geminiUrl + "?key=" + apiKey))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        HttpResponse<String> response = client.send(geminiHttpRequest, HttpResponse.BodyHandlers.ofString());
+        JsonNode rootNode = objectMapper.readTree(response.body());
+
+        String promptParaImagen = rootNode.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+        
+        // Limpiamos saltos de línea y formateamos para URL
+        String urlEncodedPrompt = java.net.URLEncoder.encode(promptParaImagen.trim(), java.nio.charset.StandardCharsets.UTF_8);
+        
+        // Retornamos la URL al servicio de imágenes que el frontend renderizará en su etiqueta <img>
+        return "https://image.pollinations.ai/prompt/" + urlEncodedPrompt + "?width=800&height=600&nologo=true";
+    }  
+
 }

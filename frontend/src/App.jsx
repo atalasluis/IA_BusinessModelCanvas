@@ -11,6 +11,8 @@ function App() {
   const [canvas, setCanvas] = useState(null)
   
   const [leanCanvas, setLeanCanvas] = useState(null)
+  const [mockupImage, setMockupImage] = useState(null) 
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState(null)
@@ -39,9 +41,12 @@ function App() {
       } finally {
         setIsLoading(false)
       }
-    } else {
+    } 
+    else {
       setLeanCanvas(null)
+      setMockupImage(null)
       try {
+        // PASO 1: Generar el texto del Lean Canvas
         const response = await fetch('http://localhost:8080/api/generate-lean', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -50,7 +55,33 @@ function App() {
         if (!response.ok) throw new Error('Servidor ocupado o caído.')
         const data = await response.json()
         if (!data.lean_canvas) throw new Error('Formato inválido.')
+        
         setLeanCanvas(data.lean_canvas)
+
+        // PASO 2: Generar la imagen del prototipo usando la solución del Lean Canvas
+        setIsGeneratingImage(true)
+        const solucionTexto = data.lean_canvas.solucion.join(" ")
+        
+        try {
+          const imageResponse = await fetch('http://localhost:8080/api/generate-mockup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              context: solucionTexto, 
+              parameters: "Genera un prototipo visual o mockup hiperrealista de una aplicación móvil" 
+            }),
+          })
+          
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json()
+            setMockupImage(imageData.image_url)
+          }
+        } catch (imgError) {
+          console.error("Error en el endpoint de la imagen:", imgError)
+        } finally {
+          setIsGeneratingImage(false)
+        }
+
       } catch (error) {
         setErrorMsg("Error al generar Lean Canvas. Intenta de nuevo.")
       } finally {
@@ -80,6 +111,7 @@ function App() {
     return items.map((item, i) => <li key={i}>{item}</li>)
   }
 
+  
   return (
     <div className="app-layout">
       {/* PANEL IZQUIERDO */}
@@ -196,7 +228,10 @@ function App() {
                 </div>
                 
                 <div className="lean-col border-orange">
-                  <div className="bloque lean-sub-block"><h4>Solución</h4><ul>{renderList(leanCanvas.solucion)}</ul></div>
+                  <div className="bloque lean-sub-block">
+                    <h4>Solución</h4>
+                    <ul>{renderList(leanCanvas.solucion)}</ul>
+                  </div>
                   <div className="bloque lean-sub-block mt-15"><h4>Métricas Clave</h4><ul>{renderList(leanCanvas.metricas_clave)}</ul></div>
                 </div>
                 
@@ -228,12 +263,34 @@ function App() {
                 </div>
               </div>
 
+              {/* NUEVA SECCIÓN: Prototipo Visual a pantalla completa */}
+              {(isGeneratingImage || mockupImage) && (
+                <div className="lean-canvas-mockup" style={{ marginTop: '15px' }}>
+                  <div className="bloque" style={{ borderTop: '4px solid #a855f7', textAlign: 'center', padding: '20px' }}>
+                    <h4>Prototipo Visual de la Solución</h4>
+                    {isGeneratingImage && (
+                      <p style={{ color: '#a855f7', marginTop: '10px' }}>
+                        🎨 Diseñando prototipo hiperrealista...
+                      </p>
+                    )}
+                    {mockupImage && (
+                      <img 
+                        src={mockupImage} 
+                        alt="Prototipo de la solución" 
+                        style={{ width: '100%', maxHeight: '500px', objectFit: 'contain', borderRadius: '8px', marginTop: '15px' }} 
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         )}
       </div>
     </div>
-  )
+  ) 
+
 }
 
 export default App
