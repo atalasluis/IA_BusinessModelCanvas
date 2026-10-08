@@ -145,8 +145,10 @@ public class GeminiService {
     public GenerateLeanResponse callGeminiForLean(GenerateRequest request) throws Exception {
         HttpClient client = HttpClient.newHttpClient();
 
-        // 1. Reutilizamos la consulta al endpoint RAG de tu compañero
-        String ragUrl = "http://localhost:8080/api/bmc/context";
+        // 1. Conexión al nuevo endpoint RAG específico para el Lean Canvas
+        String ragUrl = "http://localhost:8080/api/lean-canvas/context";
+        
+        // Armamos el body exacto que tu compañero diseñó
         String ragRequestBody = objectMapper.writeValueAsString(Map.of(
             "context", request.context(),
             "parameters", request.parameters()
@@ -160,20 +162,26 @@ public class GeminiService {
 
         HttpResponse<String> ragResponse = client.send(ragHttpRequest, HttpResponse.BodyHandlers.ofString());
         if (ragResponse.statusCode() != 200) {
-            throw new RuntimeException("El servicio RAG falló: " + ragResponse.body());
+            throw new RuntimeException("El servicio RAG del Lean Canvas falló: " + ragResponse.body());
         }
 
         JsonNode ragNode = objectMapper.readTree(ragResponse.body());
-        String promptEnriquecido = ragNode.path("prompt").asText();
+        
+        // Dependiendo de cómo armó la respuesta tu compañero, extraemos el texto enriquecido.
+        // Si el RAG de tu compañero sigue el estándar del archivo rag-api.md, el campo se llama "context"[cite: 7].
+        // Si devuelve directamente el prompt armado, ajusta "context" por "prompt" según corresponda.
+        String promptEnriquecido = ragNode.has("context") ? ragNode.path("context").asText() : ragNode.path("prompt").asText();
 
-        // 2. Instrucciones específicas para Ash Maurya y Riesgo
+        // 2. Instrucciones específicas para Ash Maurya y Riesgo (Con Fuentes Reales)
         String systemInstruction = """
             Eres un experto en metodologías ágiles y Lean Startup (Ash Maurya). Analiza la idea y estructura un Lean Canvas estricto.
             REGLA CRÍTICA PARA 'problemas': 
             1. DEBES incluir datos numéricos en CADA problema formulado (ej. 'El 75% de los usuarios...' o 'De 100 entrevistados, 65...').
             2. Al final de la descripción de cada problema, DEBES incluir obligatoriamente un enlace web de respaldo usando el formato '[Fuente: URL]'.
-            ADVERTENCIA DE ALUCINACIÓN: Si el usuario o el CONOCIMIENTO RECUPERADO no proporcionan URLs, extrae URLs 100% reales y válidas de instituciones oficiales, ministerios, o consultoras (ej. OMS, Gartner, Forbes) de tu conocimiento preentrenado. BAJO NINGUNA CIRCUNSTANCIA inventes URLs inexistentes. Si no tienes un enlace exacto al estudio, proporciona la URL de la página principal de la institución real que respalde la temática.
+            ADVERTENCIA DE ALUCINACIÓN: Si el usuario o el CONOCIMIENTO RECUPERADO no proporcionan URLs, extrae URLs 100% reales y válidas de instituciones oficiales, ministerios, o consultoras de tu conocimiento preentrenado. BAJO NINGUNA CIRCUNSTANCIA inventes URLs inexistentes.
             """;
+
+        // ... [El resto del código con el JSON Schema y la llamada a Gemini se mantiene exactamente igual] ...
 
         // 3. El nuevo JSON Schema blindado para Lean Canvas
         String schemaJson = """
